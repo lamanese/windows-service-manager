@@ -1,90 +1,90 @@
-# Windows Service Manager -- Konfiguration
-# Alle Felder sind optional. Fehlende Werte werden durch die Standardwerte ersetzt.
-# Legen Sie diese Datei im Stammverzeichnis des Projekts ab (neben start.bat).
+# Windows Service Manager -- Configuration
+# All fields are optional. Missing values are replaced by defaults.
+# Place this file in the project root (next to start.bat).
 
 # ---------------------------------------------------------------------------
-# Server-Einstellungen
+# Server settings
 # ---------------------------------------------------------------------------
 server:
-  # Bind-Adresse des Backends.
-  # "0.0.0.0" = alle Netzwerkschnittstellen (Standard).
-  # "127.0.0.1" = nur lokale Verbindungen (empfohlen hinter Reverse Proxy).
+  # Bind address of the backend.
+  # "0.0.0.0" = all network interfaces (default).
+  # "127.0.0.1" = local connections only (recommended behind reverse proxy).
   host: "0.0.0.0"
 
-  # TCP-Port, auf dem der FastAPI-Server lauscht.
+  # TCP port the FastAPI server listens on.
   port: 8080
 
-  # Anzeigename in der Web-Oberflaeche.
-  # Leer oder nicht gesetzt = Hostname des Servers wird verwendet.
-  # name: "Mein Produktionsserver"
+  # Display name shown in the web UI header.
+  # Empty or not set = server hostname is used.
+  # name: "My Production Server"
   name: ""
 
 # ---------------------------------------------------------------------------
-# Logging / Audit-Log
+# Logging / Audit Log
 # ---------------------------------------------------------------------------
 logging:
-  # Pfad zur Audit-Log-Datei.
-  # Relativ zum Projektstamm oder absoluter Pfad.
+  # Path to the audit log file.
+  # Relative to the project root or absolute path.
   audit_log: "logs/audit.log"
 
-  # Maximale Dateigroesse in Megabyte bevor die Datei rotiert wird.
+  # Maximum file size in megabytes before the file is rotated.
   max_size_mb: 10
 
-  # Anzahl der Backup-Dateien, die nach der Rotation aufbewahrt werden
-  # (z. B. audit.log.1, audit.log.2, ...).
+  # Number of backup files to keep after rotation
+  # (e.g. audit.log.1, audit.log.2, ...).
   backup_count: 5
 
 # ---------------------------------------------------------------------------
-# UI-Standardwerte
+# UI Defaults
 # ---------------------------------------------------------------------------
-# Legt fest, welche Spalten und Filter beim Laden der Web-Oberflaeche
-# standardmaessig aktiv sind.
+# Defines which columns and filters are active by default when loading
+# the web interface.
 #
 ui_defaults:
-  # Spalte "Starttyp" standardmaessig anzeigen (true/false).
-  show_startup_type: false
+  # Show the "Startup Type" column by default (true/false).
+  show_startup_type: true
 
-  # Spalte "Anmelden als" standardmaessig anzeigen (true/false).
+  # Show the "Log On As" column by default (true/false).
   show_logon_as: false
 
-  # Standard-Statusfilter: "all", "running" oder "stopped".
+  # Default status filter: "all", "running", or "stopped".
   filter_status: "all"
 
-  # Standard-Starttypfilter: "all", "Automatic", "Manual" oder "Disabled".
-  filter_startup_type: "all"
+  # Default startup type filter: "all", "Automatic", "Manual", or "Disabled".
+  filter_startup_type: "Automatic"
 
 # ---------------------------------------------------------------------------
-# Dienst-Filter
+# Service Filters
 # ---------------------------------------------------------------------------
-# Legt fest, welche Windows-Dienste in der Web-Oberflaeche angezeigt werden.
+# Defines which Windows services are displayed in the web interface.
 #
-# Wenn die Liste leer ist (oder dieser Abschnitt fehlt), werden ALLE
-# Win32-Dienste angezeigt.
+# If the list is empty (or this section is missing), ALL Win32 services
+# are displayed.
 #
-# Mehrere Filter werden mit ODER verknuepft: Ein Dienst wird angezeigt,
-# wenn er mindestens einen Filter erfuellt.
+# Multiple filters are combined with OR logic: a service is displayed
+# if it matches at least one filter.
 #
-# Filtertypen:
-#   prefix   -- Dienstname beginnt mit dem angegebenen Wert (Gross-/Kleinschreibung egal)
-#   contains -- Dienstname enthaelt den angegebenen Wert (Gross-/Kleinschreibung egal)
+# Filter types:
+#   prefix   -- Service name starts with the given value (case-insensitive)
+#   contains -- Service name contains the given value (case-insensitive)
 #
 service_filters:
-  # Zeigt alle Dienste, deren Name mit "MyApp" beginnt.
-  # Trifft z. B.: MyAppWorker, MyAppScheduler, myappapi
+  # Show all services whose name starts with "MyApp".
+  # Matches e.g.: MyAppWorker, MyAppScheduler, myappapi
   - type: "prefix"
     value: "Lim"
 
-  # Zeigt alle Dienste, deren Name "Worker" enthaelt.
-  # Trifft z. B.: BackgroundWorker, DataWorker, MyAppWorker
+  # Show all services whose name contains "Worker".
+  # Matches e.g.: BackgroundWorker, DataWorker, MyAppWorker
   - type: "contains"
     value: ""
 
 # ---------------------------------------------------------------------------
-# Dienst-Ausschlussliste
+# Service Exclude List
 # ---------------------------------------------------------------------------
-# Dienste in dieser Liste werden niemals angezeigt, auch wenn ein Filter
-# aus service_filters auf sie zutrifft.
-# Verwenden Sie die internen SCM-Dienstnamen (nicht den Anzeigenamen).
+# Services in this list are never displayed, even if a filter from
+# service_filters matches them.
+# Use the internal SCM service names (not the display name).
 #
 service_exclude:
   - ""
@@ -93,26 +93,26 @@ service_exclude:
 # ---------------------------------------------------------------------------
 # Rate Limiting
 # ---------------------------------------------------------------------------
-# Gilt nur fuer Aktions-Endpunkte (Start, Stop, Restart).
-# GET /api/services ist nicht betroffen.
+# Applies only to action endpoints (start, stop, restart).
+# GET /api/services is not affected.
 #
 rate_limit:
-  # Maximale Anzahl von Aktionen pro IP-Adresse innerhalb des Zeitfensters.
+  # Maximum number of actions per IP address within the time window.
   max_requests: 10
 
-  # Laenge des gleitenden Zeitfensters in Sekunden.
+  # Length of the sliding time window in seconds.
   window_seconds: 60
 
 # ---------------------------------------------------------------------------
-# Dienst-Steuerung
+# Service Control
 # ---------------------------------------------------------------------------
-# Einstellungen fuer den Zustandswechsel beim Start/Stop eines Dienstes.
+# Settings for state transitions when starting/stopping a service.
 #
 service_control:
-  # Maximale Wartezeit in Sekunden, bis ein Dienst den Zielzustand erreicht.
-  # Wird die Zeit ueberschritten, antwortet das Backend mit HTTP 504.
+  # Maximum wait time in seconds for a service to reach its target state.
+  # If exceeded, the backend responds with HTTP 504.
   timeout_seconds: 30
 
-  # Abstand in Millisekunden zwischen zwei Statusabfragen waehrend
-  # eines Zustandswechsels (Polling-Intervall).
+  # Interval in milliseconds between status polls during
+  # a state transition (polling interval).
   poll_interval_ms: 500

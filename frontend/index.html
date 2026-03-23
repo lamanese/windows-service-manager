@@ -46,7 +46,7 @@
     aria-atomic="false"
   ></div>
 
-  <!-- Confirm Modal -->
+  <!-- Confirm modal -->
   <div
     id="confirm-modal"
     class="hidden fixed inset-0 z-50 flex items-center justify-center"
@@ -96,7 +96,7 @@
           id="refresh-btn"
           onclick="triggerRefresh()"
           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
-          aria-label="Dienste aktualisieren"
+          aria-label="Refresh services"
         >
           <span id="refresh-icon" aria-hidden="true">&#8635;</span>
           Aktualisieren
@@ -125,13 +125,13 @@
         placeholder="Dienst suchen…"
         oninput="onFilterChange()"
         class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[180px]"
-        aria-label="Dienste filtern"
+        aria-label="Filter services"
       />
       <select
         id="filter-status"
         onchange="onFilterChange()"
         class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 bg-white"
-        aria-label="Nach Status filtern"
+        aria-label="Filter by status"
       >
         <option value="all">Alle Status</option>
         <option value="running">Running</option>
@@ -141,7 +141,7 @@
         id="filter-startup"
         onchange="onFilterChange()"
         class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 bg-white"
-        aria-label="Nach Starttyp filtern"
+        aria-label="Filter by startup type"
       >
         <option value="all">Alle Starttypen</option>
         <option value="Automatic">Automatic</option>
@@ -407,7 +407,7 @@
         <button
           onclick="dismissToast('${id}')"
           class="flex-shrink-0 ml-1 opacity-75 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white rounded"
-          aria-label="Benachrichtigung schliessen"
+          aria-label="Dismiss notification"
         >&times;</button>`;
 
       container.appendChild(el);
@@ -559,12 +559,12 @@
           // Immediately refresh to pick up the new status
           await fetchServices();
         } else {
-          const detail = data.detail || data.error || `Fehler ${res.status}`;
+          const detail = data.detail || data.error || `Error ${res.status}`;
           showToast(detail, 'error');
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
-          showToast('Anfrage fehlgeschlagen – Verbindungsfehler', 'error');
+          showToast('Request failed – connection error', 'error');
         }
       } finally {
         pendingActions.delete(serviceName);

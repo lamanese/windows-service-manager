@@ -34,8 +34,8 @@ class ServiceManagerSvc(win32serviceutil.ServiceFramework):
     _svc_name_ = "WindowsServiceManager"
     _svc_display_name_ = "Windows Service Manager"
     _svc_description_ = (
-        "Web-Dashboard zur Verwaltung von Windows-Diensten. "
-        "Stellt eine Web-Oberflaeche unter dem konfigurierten Port bereit."
+        "Web dashboard for managing Windows services. "
+        "Provides a web interface on the configured port."
     )
 
     # Use the python.exe that installed the service, not PythonService.exe.

@@ -8,14 +8,14 @@ cd /d "%~dp0"
 
 net session >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo ERROR: Bitte als Administrator ausfuehren.
+    echo ERROR: Please run as Administrator.
     pause
     exit /b 1
 )
 
 if not exist venv\Scripts\python.exe (
-    echo ERROR: Virtual environment nicht gefunden.
-    echo Bitte zuerst setup.bat ausfuehren.
+    echo ERROR: Virtual environment not found.
+    echo Please run setup.bat first.
     pause
     exit /b 1
 )
@@ -24,24 +24,24 @@ REM Remove previous installation if present (ignore errors)
 venv\Scripts\python backend\win_service.py stop >nul 2>&1
 venv\Scripts\python backend\win_service.py remove >nul 2>&1
 
-echo Installiere Windows Service Manager als Windows-Dienst...
+echo Installing Windows Service Manager as a Windows service...
 venv\Scripts\python backend\win_service.py install
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo FEHLER bei der Installation.
+    echo ERROR: Installation failed.
     pause
     exit /b 1
 )
 
 echo.
-echo Dienst erfolgreich installiert.
+echo Service installed successfully.
 echo.
-echo Naechste Schritte:
-echo   - Starten:       venv\Scripts\python backend\win_service.py start
-echo   - Stoppen:        venv\Scripts\python backend\win_service.py stop
-echo   - Deinstallieren: venv\Scripts\python backend\win_service.py remove
+echo Next steps:
+echo   - Start:     venv\Scripts\python backend\win_service.py start
+echo   - Stop:      venv\Scripts\python backend\win_service.py stop
+echo   - Uninstall: venv\Scripts\python backend\win_service.py remove
 echo.
-echo Oder ueber die Windows-Dienstverwaltung (services.msc):
-echo   Dienstname: WindowsServiceManager
+echo Or via Windows Services (services.msc):
+echo   Service name: WindowsServiceManager
 echo.
 pause
