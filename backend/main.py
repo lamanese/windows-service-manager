@@ -7,6 +7,7 @@ service manager), and serves the frontend as static files.
 
 import asyncio
 import logging
+import socket
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -203,9 +204,18 @@ async def get_services() -> dict:
             or matches_filter(svc["display_name"], filters, exclude)
         ]
 
+    server_name = config.server.name or socket.gethostname()
+
     return {
         "services": all_services,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "server_name": server_name,
+        "ui_defaults": {
+            "show_startup_type": config.ui_defaults.show_startup_type,
+            "show_logon_as": config.ui_defaults.show_logon_as,
+            "filter_status": config.ui_defaults.filter_status,
+            "filter_startup_type": config.ui_defaults.filter_startup_type,
+        },
     }
 
 

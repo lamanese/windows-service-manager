@@ -89,7 +89,7 @@
     <div class="bg-white rounded-t-lg border border-b-0 border-gray-200 px-6 py-4">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-lg font-semibold text-gray-900">Service Manager</h1>
+          <h1 id="server-name" class="text-lg font-semibold text-gray-900">Service Manager</h1>
           <p id="timestamp" class="text-sm text-gray-500 mt-0.5">Stand: &ndash;</p>
         </div>
         <button
@@ -107,11 +107,11 @@
       <div class="border-t border-gray-100 mt-3 pt-3 flex items-center gap-1 flex-wrap">
         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-2">Spalten:</span>
         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none">
-          <input type="checkbox" onchange="toggleColumn('startupType')" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+          <input id="chk-startupType" type="checkbox" onchange="toggleColumn('startupType')" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
           Starttyp
         </label>
         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none ml-3">
-          <input type="checkbox" onchange="toggleColumn('logonAs')" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+          <input id="chk-logonAs" type="checkbox" onchange="toggleColumn('logonAs')" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
           Anmelden als
         </label>
       </div>
@@ -200,6 +200,7 @@
 
     // ─── Column visibility state ────────────────────────────────────────────────
     const columnVisibility = { startupType: false, logonAs: false };
+    let defaultsApplied = false;
 
     function toggleColumn(col) {
       columnVisibility[col] = !columnVisibility[col];
@@ -478,6 +479,39 @@
 
         showErrorBanner(false);
         lastServices = data.services;
+
+        // Update server name in header
+        if (data.server_name) {
+          $('server-name').textContent = data.server_name;
+          document.title = data.server_name + ' – Service Manager';
+        }
+
+        // Apply UI defaults from config on first load
+        if (!defaultsApplied && data.ui_defaults) {
+          defaultsApplied = true;
+          const d = data.ui_defaults;
+
+          // Column checkboxes
+          if (d.show_startup_type) {
+            columnVisibility.startupType = true;
+            $('chk-startupType').checked = true;
+          }
+          if (d.show_logon_as) {
+            columnVisibility.logonAs = true;
+            $('chk-logonAs').checked = true;
+          }
+          applyColumnVisibility();
+
+          // Filter dropdowns
+          if (d.filter_status && d.filter_status !== 'all') {
+            $('filter-status').value = d.filter_status;
+            filters.status = d.filter_status;
+          }
+          if (d.filter_startup_type && d.filter_startup_type !== 'all') {
+            $('filter-startup').value = d.filter_startup_type;
+            filters.startupType = d.filter_startup_type;
+          }
+        }
 
         // Update timestamp
         const ts = data.timestamp ? new Date(data.timestamp) : new Date();

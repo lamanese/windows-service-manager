@@ -14,6 +14,11 @@ server:
   # TCP-Port, auf dem der FastAPI-Server lauscht.
   port: 8080
 
+  # Anzeigename in der Web-Oberflaeche.
+  # Leer oder nicht gesetzt = Hostname des Servers wird verwendet.
+  # name: "Mein Produktionsserver"
+  name: ""
+
 # ---------------------------------------------------------------------------
 # Logging / Audit-Log
 # ---------------------------------------------------------------------------
@@ -28,6 +33,25 @@ logging:
   # Anzahl der Backup-Dateien, die nach der Rotation aufbewahrt werden
   # (z. B. audit.log.1, audit.log.2, ...).
   backup_count: 5
+
+# ---------------------------------------------------------------------------
+# UI-Standardwerte
+# ---------------------------------------------------------------------------
+# Legt fest, welche Spalten und Filter beim Laden der Web-Oberflaeche
+# standardmaessig aktiv sind.
+#
+ui_defaults:
+  # Spalte "Starttyp" standardmaessig anzeigen (true/false).
+  show_startup_type: false
+
+  # Spalte "Anmelden als" standardmaessig anzeigen (true/false).
+  show_logon_as: false
+
+  # Standard-Statusfilter: "all", "running" oder "stopped".
+  filter_status: "all"
+
+  # Standard-Starttypfilter: "all", "Automatic", "Manual" oder "Disabled".
+  filter_startup_type: "all"
 
 # ---------------------------------------------------------------------------
 # Dienst-Filter

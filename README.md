@@ -150,9 +150,14 @@ The configuration file is located in the project root (`config.yaml`). All field
 |-----|------|---------|-------------|
 | `server.host` | string | `"0.0.0.0"` | Bind address. `0.0.0.0` = all network interfaces. |
 | `server.port` | int | `8080` | TCP port the server listens on. |
+| `server.name` | string | `""` (hostname) | Display name shown in the web UI header. Empty = server hostname. |
 | `logging.audit_log` | string | `"logs/audit.log"` | Path to the audit log file (relative to project root or absolute). |
 | `logging.max_size_mb` | int | `10` | Maximum audit log file size in MB before rotation. |
 | `logging.backup_count` | int | `5` | Number of rotated backup files to keep. |
+| `ui_defaults.show_startup_type` | bool | `false` | Show the "Startup Type" column by default. |
+| `ui_defaults.show_logon_as` | bool | `false` | Show the "Log On As" column by default. |
+| `ui_defaults.filter_status` | string | `"all"` | Default status filter: `"all"`, `"running"`, or `"stopped"`. |
+| `ui_defaults.filter_startup_type` | string | `"all"` | Default startup type filter: `"all"`, `"Automatic"`, `"Manual"`, or `"Disabled"`. |
 | `service_filters` | list | `[]` (all) | List of filter objects (`type` + `value`). Empty = all services. |
 | `service_filters[].type` | string | - | `"prefix"` or `"contains"`. |
 | `service_filters[].value` | string | - | The filter value (case-insensitive). |

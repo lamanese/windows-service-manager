@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 class ServerConfig(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8080
+    name: str = ""
 
 
 class LoggingConfig(BaseModel):
@@ -40,6 +41,13 @@ class ServiceControlConfig(BaseModel):
     poll_interval_ms: int = 500
 
 
+class UiDefaultsConfig(BaseModel):
+    show_startup_type: bool = False
+    show_logon_as: bool = False
+    filter_status: str = "all"
+    filter_startup_type: str = "all"
+
+
 class AppConfig(BaseModel):
     server: ServerConfig = Field(default_factory=ServerConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
@@ -47,6 +55,7 @@ class AppConfig(BaseModel):
     service_exclude: list[str] = Field(default_factory=list)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     service_control: ServiceControlConfig = Field(default_factory=ServiceControlConfig)
+    ui_defaults: UiDefaultsConfig = Field(default_factory=UiDefaultsConfig)
 
 
 def matches_filter(
