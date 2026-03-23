@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Service Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes toast-slide-in {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+    @keyframes toast-slide-out {
+      from { transform: translateX(0);    opacity: 1; }
+      to   { transform: translateX(110%); opacity: 0; }
+    }
+    .toast-enter  { animation: toast-slide-in  0.3s ease forwards; }
+    .toast-leave  { animation: toast-slide-out 0.3s ease forwards; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    /* Subtle left shadow on sticky actions column when table scrolls */
+    td.sticky, th.sticky { box-shadow: -4px 0 8px -4px rgba(0,0,0,0.08); }
+    tr:hover td.sticky { background-color: rgb(249 250 251); }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- Toast container -->
+  <div
+    id="toast-container"
+    class="fixed top-4 right-4 z-50 flex flex-col gap-2"
+    role="status"
+    aria-live="polite"
+    aria-atomic="false"
+  ></div>
+
+  <!-- Confirm Modal -->
+  <div
+    id="confirm-modal"
+    class="hidden fixed inset-0 z-50 flex items-center justify-center"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+  >
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40" onclick="closeConfirmModal()"></div>
+    <!-- Dialog -->
+    <div class="relative bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+      <h2 id="modal-title" class="text-base font-semibold text-gray-900 mb-1">Aktion bestätigen</h2>
+      <p id="modal-body" class="text-sm text-gray-600 mb-6"></p>
+      <div class="flex justify-end gap-3">
+        <button
+          onclick="closeConfirmModal()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
+        >Abbrechen</button>
+        <button
+          id="modal-confirm-btn"
+          onclick="executeConfirmedAction()"
+          class="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors"
+        >Bestätigen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div
+    id="error-banner"
+    class="hidden bg-red-600 text-white text-sm font-medium px-4 py-3 text-center"
+    role="alert"
+  >
+    Verbindungsfehler &ndash; Backend nicht erreichbar
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- Header -->
+    <div class="bg-white rounded-t-lg border border-b-0 border-gray-200 px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-lg font-semibold text-gray-900">Service Manager</h1>
+          <p id="timestamp" class="text-sm text-gray-500 mt-0.5">Stand: &ndash;</p>
+        </div>
+        <button
+          id="refresh-btn"
+          onclick="triggerRefresh()"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
+          aria-label="Dienste aktualisieren"
+        >
+          <span id="refresh-icon" aria-hidden="true">&#8635;</span>
+          Aktualisieren
+        </button>
+      </div>
+
+      <!-- Column toggles -->
+      <div class="border-t border-gray-100 mt-3 pt-3 flex items-center gap-1 flex-wrap">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-2">Spalten:</span>
+        <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none">
+          <input type="checkbox" onchange="toggleColumn('startupType')" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+          Starttyp
+        </label>
+        <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none ml-3">
+          <input type="checkbox" onchange="toggleColumn('logonAs')" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+          Anmelden als
+        </label>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="bg-white border-x border-gray-200 px-6 py-3 flex flex-wrap gap-3 items-center">
+      <input
+        id="filter-search"
+        type="search"
+        placeholder="Dienst suchen…"
+        oninput="onFilterChange()"
+        class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[180px]"
+        aria-label="Dienste filtern"
+      />
+      <select
+        id="filter-status"
+        onchange="onFilterChange()"
+        class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 bg-white"
+        aria-label="Nach Status filtern"
+      >
+        <option value="all">Alle Status</option>
+        <option value="running">Running</option>
+        <option value="stopped">Stopped</option>
+      </select>
+      <select
+        id="filter-startup"
+        onchange="onFilterChange()"
+        class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 bg-white"
+        aria-label="Nach Starttyp filtern"
+      >
+        <option value="all">Alle Starttypen</option>
+        <option value="Automatic">Automatic</option>
+        <option value="Manual">Manual</option>
+        <option value="Disabled">Disabled</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-gray-200 rounded-b-lg overflow-x-auto">
+      <table class="w-full text-sm min-w-[600px]" role="table">
+        <thead>
+          <tr class="border-b border-gray-200 bg-gray-50">
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider max-w-[280px]">
+              Dienst
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+              Status
+            </th>
+            <th data-col="startupType" scope="col" class="hidden px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+              Starttyp
+            </th>
+            <th data-col="logonAs" scope="col" class="hidden px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+              Anmelden als
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50">
+              Aktionen
+            </th>
+          </tr>
+        </thead>
+        <tbody id="service-table-body">
+          <!-- Rows injected by JS -->
+        </tbody>
+      </table>
+
+      <!-- Empty state -->
+      <div id="empty-state" class="hidden py-16 text-center text-gray-500 text-sm">
+        Keine Dienste gefunden &ndash; Filter pr&uuml;fen
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    'use strict';
+
+    // ─── State ────────────────────────────────────────────────────────────────
+
+    /** @type {Map<string, {action: string, controller: AbortController}>} */
+    const pendingActions = new Map();
+
+    /** @type {number|null} */
+    let refreshTimer = null;
+
+    let toastCounter = 0;
+
+    // ─── Column visibility state ────────────────────────────────────────────────
+    const columnVisibility = { startupType: false, logonAs: false };
+
+    function toggleColumn(col) {
+      columnVisibility[col] = !columnVisibility[col];
+      applyColumnVisibility();
+      // Re-render table with current filtered data
+      if (lastFilteredServices !== null) renderServices(lastFilteredServices);
+    }
+
+    function applyColumnVisibility() {
+      ['startupType', 'logonAs'].forEach(col => {
+        document.querySelectorAll(`[data-col="${col}"]`).forEach(el => {
+          el.classList.toggle('hidden', !columnVisibility[col]);
+        });
+      });
+    }
+
+    // ─── Filter state ─────────────────────────────────────────────────────────
+    const filters = { search: '', status: 'all', startupType: 'all' };
+
+    /** Last filtered services (what is currently displayed) */
+    let lastFilteredServices = null;
+
+    function onFilterChange() {
+      filters.search = ($('filter-search') ? $('filter-search').value.toLowerCase().trim() : '');
+      filters.status = ($('filter-status') ? $('filter-status').value : 'all');
+      filters.startupType = ($('filter-startup') ? $('filter-startup').value : 'all');
+      applyFilters();
+    }
+
+    function applyFilters() {
+      if (lastServices === null) return;
+      const filtered = lastServices.filter(svc => {
+        if (filters.search) {
+          const matchesName = svc.name.toLowerCase().includes(filters.search);
+          const matchesDisplay = svc.display_name.toLowerCase().includes(filters.search);
+          if (!matchesName && !matchesDisplay) return false;
+        }
+        if (filters.status !== 'all' && svc.status !== filters.status) return false;
+        if (filters.startupType !== 'all' && svc.startup_type !== filters.startupType) return false;
+        return true;
+      });
+      lastFilteredServices = filtered;
+      renderServices(filtered);
+    }
+
+    // ─── DOM helpers ──────────────────────────────────────────────────────────
+
+    const $ = (id) => document.getElementById(id);
+
+    function showErrorBanner(visible) {
+      $('error-banner').classList.toggle('hidden', !visible);
+    }
+
+    // ─── Status badge ─────────────────────────────────────────────────────────
+
+    function statusConfig(status) {
+      switch (status) {
+        case 'running':
+          return { dot: 'bg-green-500', badge: 'bg-green-100 text-green-800', label: 'Running', pulse: false };
+        case 'stopped':
+          return { dot: 'bg-red-500',   badge: 'bg-red-100 text-red-800',     label: 'Stopped', pulse: false };
+        case 'starting':
+        case 'stopping':
+          return { dot: 'bg-yellow-500', badge: 'bg-yellow-100 text-yellow-800',
+                   label: status === 'starting' ? 'Starting' : 'Stopping', pulse: true };
+        default:
+          return { dot: 'bg-gray-400',  badge: 'bg-gray-100 text-gray-800',   label: 'Unknown', pulse: false };
+      }
+    }
+
+    function buildStatusBadge(status) {
+      const cfg = statusConfig(status);
+      const pulseClass = cfg.pulse ? 'animate-pulse' : '';
+      return `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.badge} ${pulseClass}">
+          <span class="w-2 h-2 rounded-full ${cfg.dot} flex-shrink-0"></span>
+          ${cfg.label}
+        </span>`;
+    }
+
+    // ─── Button helpers ───────────────────────────────────────────────────────
+
+    function isDisabled(status, actionType, hasPending) {
+      if (hasPending) return true;
+      if (actionType === 'start')   return status === 'running'  || status === 'starting';
+      if (actionType === 'stop')    return status === 'stopped'  || status === 'stopping';
+      if (actionType === 'restart') return false;
+      return false;
+    }
+
+    function buildActionButton({ name, displayName, status, actionType, label, hasPending, pendingAction }) {
+      const disabled = isDisabled(status, actionType, hasPending);
+      const isThisAction = hasPending && pendingAction === actionType;
+
+      const disabledAttr = disabled ? 'disabled' : '';
+      const disabledClasses = disabled
+        ? 'opacity-50 cursor-not-allowed'
+        : 'hover:bg-gray-100 active:bg-gray-200';
+
+      const content = isThisAction
+        ? `<span class="spinner" aria-hidden="true"></span>`
+        : label;
+
+      const ariaLabel = `${actionType} ${name}`;
+      const safeName = escapeAttr(name);
+      const safeDisplay = escapeAttr(displayName);
+
+      return `
+        <button
+          ${disabledAttr}
+          onclick="confirmAction('${safeName}', '${safeDisplay}', '${actionType}')"
+          class="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-white text-gray-700 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${disabledClasses}"
+          aria-label="${ariaLabel}"
+          title="${actionType}"
+        >${content}</button>`;
+    }
+
+    // ─── Render ───────────────────────────────────────────────────────────────
+
+    function renderServices(services) {
+      const tbody = $('service-table-body');
+      const emptyState = $('empty-state');
+
+      if (!services || services.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        applyColumnVisibility();
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      const rows = services.map((svc) => {
+        const pending = pendingActions.get(svc.name);
+        const hasPending = Boolean(pending);
+        const pendingAction = pending ? pending.action : null;
+
+        const startBtn  = buildActionButton({ name: svc.name, displayName: svc.display_name, status: svc.status, actionType: 'start',   label: '&#9654;', hasPending, pendingAction });
+        const stopBtn   = buildActionButton({ name: svc.name, displayName: svc.display_name, status: svc.status, actionType: 'stop',    label: '&#9632;', hasPending, pendingAction });
+        const restartBtn = buildActionButton({ name: svc.name, displayName: svc.display_name, status: svc.status, actionType: 'restart', label: '&#8635;', hasPending, pendingAction });
+
+        const startupTypeDisplay = svc.startup_type || '–';
+        const logonAsDisplay = svc.logon_as || '–';
+
+        return `
+          <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors" data-service="${escapeAttr(svc.name)}">
+            <td class="px-6 py-4 max-w-[280px]">
+              <span class="font-medium text-gray-900 block truncate" title="${escapeAttr(svc.display_name)}">${escapeHtml(svc.display_name)}</span>
+              <span class="text-xs text-gray-500 font-mono block truncate" title="${escapeAttr(svc.name)}">${escapeHtml(svc.name)}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              ${buildStatusBadge(svc.status)}
+            </td>
+            <td data-col="startupType" class="hidden px-6 py-4 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(startupTypeDisplay)}</td>
+            <td data-col="logonAs" class="hidden px-6 py-4 text-sm text-gray-700 font-mono text-xs whitespace-nowrap">${escapeHtml(logonAsDisplay)}</td>
+            <td class="px-6 py-4 sticky right-0 bg-white">
+              <div class="flex items-center gap-1.5">
+                ${startBtn}
+                ${stopBtn}
+                ${restartBtn}
+              </div>
+            </td>
+          </tr>`;
+      });
+
+      tbody.innerHTML = rows.join('');
+      applyColumnVisibility();
+    }
+
+    // ─── Escape utilities ─────────────────────────────────────────────────────
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g,  '&amp;')
+        .replace(/</g,  '&lt;')
+        .replace(/>/g,  '&gt;')
+        .replace(/"/g,  '&quot;')
+        .replace(/'/g,  '&#39;');
+    }
+
+    function escapeAttr(str) {
+      return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // ─── Toast ────────────────────────────────────────────────────────────────
+
+    function showToast(message, type) {
+      const id = `toast-${++toastCounter}`;
+      const container = $('toast-container');
+
+      const colorClasses = type === 'success'
+        ? 'bg-green-600 text-white'
+        : 'bg-red-600 text-white';
+
+      const icon = type === 'success' ? '&#10003;' : '&#10005;';
+
+      const el = document.createElement('div');
+      el.id = id;
+      el.setAttribute('role', 'alert');
+      el.className = `toast-enter flex items-start gap-2 px-4 py-3 rounded-md shadow-lg text-sm max-w-xs ${colorClasses}`;
+      el.innerHTML = `
+        <span aria-hidden="true" class="mt-0.5 flex-shrink-0">${icon}</span>
+        <span class="flex-1">${escapeHtml(message)}</span>
+        <button
+          onclick="dismissToast('${id}')"
+          class="flex-shrink-0 ml-1 opacity-75 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white rounded"
+          aria-label="Benachrichtigung schliessen"
+        >&times;</button>`;
+
+      container.appendChild(el);
+
+      setTimeout(() => dismissToast(id), 3000);
+    }
+
+    function dismissToast(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('toast-enter');
+      el.classList.add('toast-leave');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+    }
+
+    // ─── Confirm Modal ────────────────────────────────────────────────────────
+
+    let pendingConfirm = null;
+
+    const ACTION_LABELS = { start: 'starten', stop: 'stoppen', restart: 'neu starten' };
+    const ACTION_COLORS = {
+      start:   'bg-green-600 hover:bg-green-700 focus:ring-green-500',
+      stop:    'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+      restart: 'bg-orange-500 hover:bg-orange-600 focus:ring-orange-400',
+    };
+
+    function confirmAction(serviceName, displayName, action) {
+      if (pendingActions.has(serviceName)) return;
+      pendingConfirm = { serviceName, action };
+
+      const verb = ACTION_LABELS[action] || action;
+      $('modal-body').textContent = `Möchten Sie "${displayName}" wirklich ${verb}?`;
+
+      const btn = $('modal-confirm-btn');
+      btn.textContent = verb.charAt(0).toUpperCase() + verb.slice(1);
+      btn.className = `px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors ${ACTION_COLORS[action]}`;
+
+      $('confirm-modal').classList.remove('hidden');
+      btn.focus();
+    }
+
+    function closeConfirmModal() {
+      $('confirm-modal').classList.add('hidden');
+      pendingConfirm = null;
+    }
+
+    function executeConfirmedAction() {
+      if (!pendingConfirm) return;
+      const { serviceName, action } = pendingConfirm;
+      closeConfirmModal();
+      handleAction(serviceName, action);
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeConfirmModal();
+    });
+
+    // ─── API calls ────────────────────────────────────────────────────────────
+
+    /** Last known services list (preserved across refreshes when action is in-flight) */
+    let lastServices = null;
+
+    async function fetchServices() {
+      try {
+        const res = await fetch('/api/services');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        showErrorBanner(false);
+        lastServices = data.services;
+
+        // Update timestamp
+        const ts = data.timestamp ? new Date(data.timestamp) : new Date();
+        $('timestamp').textContent = 'Stand: ' + ts.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        applyFilters();
+      } catch (err) {
+        showErrorBanner(true);
+        // Keep existing table content if we have it
+        if (lastFilteredServices !== null) renderServices(lastFilteredServices);
+      }
+    }
+
+    function actionLabel(action, displayName) {
+      if (action === 'start')   return `${displayName} gestartet`;
+      if (action === 'stop')    return `${displayName} gestoppt`;
+      if (action === 'restart') return `${displayName} neugestartet`;
+      return `${displayName} ${action}`;
+    }
+
+    async function handleAction(serviceName, action) {
+      if (pendingActions.has(serviceName)) return;
+
+      const controller = new AbortController();
+      pendingActions.set(serviceName, { action, controller });
+
+      // Re-render to show spinner immediately
+      if (lastFilteredServices !== null) renderServices(lastFilteredServices);
+      else if (lastServices) renderServices(lastServices);
+
+      try {
+        const res = await fetch(`/api/services/${encodeURIComponent(serviceName)}/${action}`, {
+          method: 'POST',
+          signal: controller.signal,
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          // Resolve display name from last known services
+          const svc = lastServices && lastServices.find((s) => s.name === serviceName);
+          const displayName = svc ? svc.display_name : serviceName;
+          showToast(actionLabel(action, displayName), 'success');
+
+          // Immediately refresh to pick up the new status
+          await fetchServices();
+        } else {
+          const detail = data.detail || data.error || `Fehler ${res.status}`;
+          showToast(detail, 'error');
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          showToast('Anfrage fehlgeschlagen – Verbindungsfehler', 'error');
+        }
+      } finally {
+        pendingActions.delete(serviceName);
+        // Re-render to clear spinner
+        if (lastFilteredServices !== null) renderServices(lastFilteredServices);
+        else if (lastServices) renderServices(lastServices);
+      }
+    }
+
+    // ─── Refresh ──────────────────────────────────────────────────────────────
+
+    function scheduleRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(async () => {
+        await fetchServices();
+        scheduleRefresh();
+      }, 5000);
+    }
+
+    async function triggerRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      await fetchServices();
+      scheduleRefresh();
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+
+    (async function init() {
+      await fetchServices();
+      scheduleRefresh();
+    })();
+  </script>
+</body>
+</html>
