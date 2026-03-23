@@ -8,3 +8,4 @@ venv/
 logs/*.log
 logs/*.log.*
 *.zip
+PROJECT-STATUS.md
